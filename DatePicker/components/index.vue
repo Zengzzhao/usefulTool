@@ -29,6 +29,7 @@
                         @tap="selectDate(day)" :class="{
                             'selected': isSelected(day.fullDate),
                             'today': isToday(day.fullDate),
+                            'in_range': isInRange(day.fullDate),
                             'disabled': !day.isCurrentMonth
                         }">
                         <text class="date_text" v-if="day.isCurrentMonth">{{ day.date }}</text>
@@ -49,7 +50,7 @@
 </template>
 
 <script setup lang='ts'>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { WEEK_DAYS } from '@/common/constant';
 interface Props {
     visible?: boolean,
@@ -68,11 +69,11 @@ interface Day {
     fullDate: Date
 }
 // 自定义事件
-const emits=defineEmits<{
-    (e:'update:visible',value:boolean):void,
-    (e:'update:modelValue',value:string):void,
-    (e:'confirm',value:string|null):void,
-    (e:'cancel'):void
+const emits = defineEmits<{
+    (e: 'update:visible', value: boolean): void,
+    (e: 'update:modelValue', value: string): void,
+    (e: 'confirm', value: string | null): void,
+    (e: 'cancel'): void
 }>()
 // 响应式数据
 const currentDate = ref(new Date()) // 当前日历上要显示的时间中的一个作为参考
@@ -80,6 +81,8 @@ const currentYear = computed(() => currentDate.value.getFullYear()) // 当前日
 const currentMonth = computed(() => currentDate.value.getMonth() + 1) // 当前日历上要显示的月份
 const displayTitle = computed(() => `${currentYear.value}-${currentMonth.value}`) // 日历标题：显示当前的月份
 const selectedDate = ref<Date | null>(null) // 单选日期类型时选中的日期时间
+const selectedStartDate = ref<Date | null>(null) // 时间段类型时选择的开始时间
+const selectedEndDate = ref<Date | null>(null) // 时间段类型时选择的结束时间
 // 今天的静态数据
 const today = new Date()
 // 日历上的时间数据
@@ -146,18 +149,29 @@ const isSelected = (date: Date) => {
     if (props.type == 'single' && selectedDate.value) {
         return isSameDay(date, selectedDate.value)
     }
+    if (props.type == 'range') {
+        return (selectedStartDate.value && isSameDay(date, selectedStartDate.value)) || (selectedEndDate.value && isSameDay(date, selectedEndDate.value))
+    }
 }
+// 时间段类型时，判断日期是否在选择的范围内
+const isInRange = (date: Date) => {
+    if (props.type == 'range' && selectedStartDate.value && selectedEndDate.value) {
+        return date > selectedStartDate.value && date < selectedEndDate.value
+    }
+    return false
+}
+
 // 返回指导格式的日期字符串
-const formatDate=(date:Date,format:string=props.format||'YYYY.MM.DD')=>{
-    const year=date.getFullYear()
-    const month=String(date.getMonth()+1).padStart(2,'0')
-    const day=String(date.getDate()).padStart(2,'0')
+const formatDate = (date: Date, format: string = props.format || 'YYYY.MM.DD') => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
     return format
-        .replace('YYYY',String(year))
-        .replace('MM',month)
-        .replace('M',String(String(date.getMonth()+1)))
-        .replace('DD',day)
-        .replace('D',String(date.getDate()))
+        .replace('YYYY', String(year))
+        .replace('MM', month)
+        .replace('M', String(String(date.getMonth() + 1)))
+        .replace('DD', day)
+        .replace('D', String(date.getDate()))
 }
 
 // 事件处理方法
@@ -177,22 +191,74 @@ const selectDate = (day: Day) => {
     const selectedFullDate = day.fullDate
     if (props.type == 'single') {
         selectedDate.value = selectedFullDate
+        emits('update:modelValue',formatDate(selectedDate.value))
+    } else if (props.type == 'range') {
+        if (!selectedStartDate.value || (selectedStartDate.value && selectedEndDate.value)) {
+            // 开始时间没有选 或者 开始时间和结束时间都选了此时是重新选一个新时间段
+            selectedStartDate.value = selectedFullDate
+            selectedEndDate.value = null
+        } else if (selectedStartDate.value && !selectedEndDate.value) {
+            // 选择结束日期
+            if (selectedFullDate == selectedStartDate.value) {
+                // 选的结束时间与开始时间相同
+                
+            } else if (selectedFullDate < selectedStartDate.value) {
+                // 选的结束时间比开始时间早
+                selectedEndDate.value = selectedStartDate.value
+                selectedStartDate.value = selectedFullDate
+            } else {
+                // 选的结束时间比开始时间晚
+                selectedEndDate.value = selectedFullDate
+            }
+        }
+        if(selectedStartDate.value && selectedEndDate.value){
+            const start=formatDate(selectedStartDate.value)
+            const end=formatDate(selectedEndDate.value)
+            const rangeDate=`${start}-${end}`
+            emits('update:modelValue',rangeDate)
+        }
     }
 }
 // 点击了取消按钮
-const cancel=()=>{
+const cancel = () => {
     emits('cancel')
-    emits('update:visible',false)
+    emits('update:visible', false)
 }
 // 点击了确认按钮
-const confirm=()=>{
-    let result=null
-    if(props.type=='single' && selectedDate.value){
-        result=formatDate(selectedDate.value)
+const confirm = () => {
+    let result = null
+    if (props.type == 'single' && selectedDate.value) {
+        result = formatDate(selectedDate.value)
+    } else if (props.type == 'range' && selectedStartDate.value && selectedEndDate.value) {
+        result = `${formatDate(selectedStartDate.value)}-${formatDate(selectedEndDate.value)}`
     }
-    emits('confirm',result)
-    emits('update:visible',false)
+    emits('confirm', result)
+    emits('update:visible', false)
 }
+
+// 若一开始通过v-model绑定了初始值则进行初始化
+const init = () => {
+    if (props.modelValue) {
+        if (props.type == 'single' && props.modelValue.split('-').length == 1) {
+            selectedDate.value=new Date(props.modelValue)
+        } else if (props.type == 'range' && props.modelValue.split('-').length == 2) {
+            const [start,end]=props.modelValue.split('-')
+            if(start==end){
+                // 选择的时间段是同一天
+                selectedStartDate.value=new Date(start)
+            }else{
+                // 选择的时间段不是同一天
+                selectedStartDate.value=new Date(start)
+                selectedEndDate.value=new Date(end)
+            }
+        } else {
+            throw Error('日期选择器类型与传递的日期默认值不匹配')
+        }
+    }
+}
+onMounted(() => {
+    init()
+})
 </script>
 
 <style scoped lang="scss">
