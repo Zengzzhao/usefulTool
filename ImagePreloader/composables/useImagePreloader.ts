@@ -1,11 +1,13 @@
 import { onMounted, onUnmounted, ref } from "vue";
 import { imagePreloader } from "../main";
 
+// 使用图片预加载器的钩子的配置
 interface useImagePreloaderOptions {
-    images: Array<{ url: string, priority: number }>, // 预加载的图片数组（图片url，预加载优先级）
-    delay: number // 延迟预加载时间
+    images?: Array<{ url: string, priority: number }>, // 预加载的图片数组（图片url，预加载优先级）
+    delay?: number // 延迟预加载时间
 }
-export function useImagePreloader(options: useImagePreloaderOptions) {
+// 使用图片预加载器的钩子
+export function useImagePreloader(options: useImagePreloaderOptions={}) {
     const { images=[], delay=1000 } = options
     const status = ref(imagePreloader.getStatus())
     let statusTimer: any = null // 状态监控计时器
@@ -50,8 +52,8 @@ export function useImagePreloader(options: useImagePreloaderOptions) {
         }
     }
     onMounted(()=>{
-        console.log('预拉取图片',images);
         if(images.length){
+            console.log('预拉取图片',images);
             setTimeout(()=>{
                 addImages(images)
             },delay)

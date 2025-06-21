@@ -1,0 +1,234 @@
+.calendar_container {
+    width: 702rpx;
+    height: 1050rpx;
+    background: #FFFFFF;
+    border-radius: 48rpx; // 24px * 2
+    overflow: hidden;
+    position: relative;
+}
+
+// 标题区域
+.title_section {
+    height: 140rpx; // 70px * 2
+    padding: 24rpx 0; // 12px * 2
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+
+    // 左右按钮
+    .nav_button {
+        width: 48rpx; // 24px * 2
+        height: 48rpx;
+        margin: 0 56rpx; // 28px * 2
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 1;
+
+        &.disabled {
+            opacity: 0.4;
+        }
+
+        // 左右箭头
+        .arrow_left,
+        .arrow_right {
+            width: 28rpx; // 14px * 2
+            height: 28rpx;
+            border: 4rpx solid rgba(0, 0, 0, 0.8); // 2px * 2
+            border-top: none;
+            border-right: none;
+        }
+
+        .arrow_left {
+            transform: rotate(45deg);
+        }
+
+        .arrow_right {
+            transform: rotate(-135deg);
+        }
+    }
+
+    // 标题部分的中间内容
+    .title_content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8rpx;
+
+        // 标题部分的月份
+        .current_month {
+            font-weight: 600;
+            font-size: 44rpx; // 22px * 2
+            line-height: 1.18;
+            color: rgba(0, 0, 0, 0.9);
+            text-align: center;
+        }
+
+        // 标题部分的时间段
+        .date_range {
+            font-weight: 500;
+            font-size: 28rpx; // 14px * 2
+            line-height: 1;
+            color: rgba(0, 0, 0, 0.4);
+            text-align: center;
+        }
+    }
+}
+
+// 内容区域
+.content_section {
+    height: 576rpx; // 288px * 2
+    padding-top: 24rpx; // 调整padding，去掉分隔线后重新计算
+
+    // 星期标题
+    .week_header {
+        height: 92rpx; // 46px * 2
+        padding: 0 32rpx; // 16px * 2
+        display: flex;
+        align-items: stretch;
+        gap: 8rpx; // 4px * 2
+
+        // 每个星期项
+        .week_item {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24rpx 0; // 12px * 2
+            font-weight: 400;
+            font-size: 28rpx; // 14px * 2
+            line-height: 1.57;
+            color: rgba(0, 0, 0, 0.6);
+        }
+    }
+
+    // 日期网格
+    .month_grid {
+        padding: 0 32rpx; // 16px * 2
+        height: 484rpx; // 242px * 2
+
+        // 每行日期
+        .date_row {
+            height: 84rpx; // 42px * 2
+            display: flex;
+            align-items: stretch;
+            gap: 8rpx; // 4px * 2
+            margin-bottom: 8rpx; // 4px * 2
+
+            &:last-child {
+                margin-bottom: 0;
+            }
+
+            // 每个日期元素盒子
+            .date_item {
+                flex: 1;
+                height: 84rpx;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 12rpx; // 6px * 2
+                background: transparent;
+                position: relative;
+                transition: all 0.2s ease;
+
+                // 不是当前月份则为空,不显示
+                &.empty {
+                    opacity: 0;
+                    pointer-events: none;
+                }
+
+                // 不能选择的日期
+                &.disabled {
+                    opacity: 0.3;
+                    pointer-events: none;
+
+                    .date_text {
+                        color: rgba(0, 0, 0, 0.3);
+                        text-decoration: line-through;
+                    }
+                }
+
+                // 有tody属性但是没有disabled属性
+                // 今天 且 可以选择
+                &.today:not(.disabled) {
+                    background: transparent;
+
+                    .date_text {
+                        color: $uni-color-primary; // 使用设计中的蓝色
+                        font-weight: 600;
+                    }
+                }
+
+                // 被选中的日期/日期段
+                &.selected:not(.disabled),
+                &.in_range:not(.disabled) {
+                    background: $uni-color-primary; // 使用设计中的蓝色背景
+                    border-radius: 176rpx; // 88px * 2，创建圆形效果
+
+                    .date_text {
+                        color: rgba(255, 255, 255, 0.9); // 使用设计中的白色文字
+                        font-weight: 600;
+                    }
+                }
+
+                // 日期文本
+                .date_text {
+                    font-weight: 600;
+                    font-size: 32rpx; // 16px * 2
+                    line-height: 1.5;
+                    color: rgba(0, 0, 0, 0.9);
+                    text-align: center;
+                }
+            }
+        }
+    }
+}
+
+// 底部按钮
+.footer_section {
+    position: absolute;
+    bottom: 40rpx;
+    left: 0;
+    right: 0;
+    box-sizing: border-box;
+    height: 160rpx; // 包含padding的总高度
+    padding: 32rpx; // 16px * 2
+    display: flex;
+    align-items: stretch;
+    gap: 16rpx; // 8px * 2
+    background: #FFFFFF;
+
+    // 取消,确认按钮
+    .cancel_button,
+    .confirm_button {
+        flex: 1;
+        height: 96rpx; // 调整按钮高度
+        border-radius: 24rpx; // 12px * 2
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24rpx 40rpx; // 12px * 2, 20px * 2
+
+        .button_text {
+            font-weight: 500;
+            font-size: 32rpx; // 16px * 2
+            line-height: 1.5;
+            text-align: center;
+            color: #000000;
+        }
+    }
+
+    .cancel_button {
+        background: rgba(0, 0, 0, 0.08);
+    }
+
+    .confirm_button {
+        background: #000000;
+
+        .confirm_text {
+            color: #FFFFFF;
+        }
+    }
+}

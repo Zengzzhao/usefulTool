@@ -62,8 +62,6 @@ class ImagePreloader {
             // 过滤掉已经加载完毕的 和 正在加载的，留下还未加载的 
             .filter(item => !item.loaded && !item.loading)
             .slice(0, Math.min(this.config.batchSize, this.config.maxConcurrent - this.loadingCount))
-        console.log(batch.length,batch,this.queue,this.config.maxConcurrent,this.loadingCount);
-        
         if (!batch.length) return
         // 并发加载批次中的图片
         const promises = batch.map(item => this.loadImage(item))
