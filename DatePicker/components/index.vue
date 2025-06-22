@@ -30,7 +30,7 @@
                             'selected': isSelected(day.fullDate),
                             'today': isToday(day.fullDate),
                             'in_range': isInRange(day.fullDate),
-                            'disabled': !day.isCurrentMonth
+                            'disabled': !day.isCurrentMonth || isDisabled(day.fullDate)
                         }">
                         <text class="date_text" v-if="day.isCurrentMonth">{{ day.date }}</text>
                     </view>
@@ -52,16 +52,26 @@
 <script setup lang='ts'>
 import { ref, computed, onMounted } from 'vue';
 import { WEEK_DAYS } from '@/common/constant';
+interface DateRange {
+    start: Date | string | null,
+    end: Date | string | null
+}
 interface Props {
-    visible?: boolean,
-    modelValue?: string | null,
-    type?: 'single' | 'range',
-    format?: string
+    visible?: boolean, // 控制日期选择器是否可见
+    modelValue?: string | null, // 传递初始日期值( 单日期类型：xxxx-(x)x-(x)x，时间段类型必须使用-分隔时间传递：xxxx.(x)x.(x)x-xxxx.(x)x.(x)x )
+    type?: 'single' | 'range', // 日期选择器类型
+    // 可选日期控制
+    enabledRange?: DateRange, // 可选的日期范围
+    disabledRanges?: DateRange[] // 禁用的日期范围数组
+    disabledDates?: (Date | string)[] // 禁用具体日期
+    disabledWeekdays?: number[] // 禁用星期几 0-6 (0是周日)
+    // 快捷设置
+    disablePast?: boolean, // 禁用今天之前的日期
+    disableFuture?: boolean // 禁用今天之后的日期
 }
 const props = withDefaults(defineProps<Props>(), {
     visible: true,
     type: 'single',
-    format: 'YYYY.MM.DD'
 })
 interface Day {
     date: number,
@@ -162,7 +172,7 @@ const isInRange = (date: Date) => {
 }
 
 // 返回指导格式的日期字符串
-const formatDate = (date: Date, format: string = props.format || 'YYYY.MM.DD') => {
+const formatDate = (date: Date, format: string = 'YYYY.MM.DD') => {
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
@@ -191,7 +201,7 @@ const selectDate = (day: Day) => {
     const selectedFullDate = day.fullDate
     if (props.type == 'single') {
         selectedDate.value = selectedFullDate
-        emits('update:modelValue',formatDate(selectedDate.value))
+        emits('update:modelValue', formatDate(selectedDate.value))
     } else if (props.type == 'range') {
         if (!selectedStartDate.value || (selectedStartDate.value && selectedEndDate.value)) {
             // 开始时间没有选 或者 开始时间和结束时间都选了此时是重新选一个新时间段
@@ -201,7 +211,7 @@ const selectDate = (day: Day) => {
             // 选择结束日期
             if (selectedFullDate == selectedStartDate.value) {
                 // 选的结束时间与开始时间相同
-                
+
             } else if (selectedFullDate < selectedStartDate.value) {
                 // 选的结束时间比开始时间早
                 selectedEndDate.value = selectedStartDate.value
@@ -211,11 +221,11 @@ const selectDate = (day: Day) => {
                 selectedEndDate.value = selectedFullDate
             }
         }
-        if(selectedStartDate.value && selectedEndDate.value){
-            const start=formatDate(selectedStartDate.value)
-            const end=formatDate(selectedEndDate.value)
-            const rangeDate=`${start}-${end}`
-            emits('update:modelValue',rangeDate)
+        if (selectedStartDate.value && selectedEndDate.value) {
+            const start = formatDate(selectedStartDate.value)
+            const end = formatDate(selectedEndDate.value)
+            const rangeDate = `${start}-${end}`
+            emits('update:modelValue', rangeDate)
         }
     }
 }
@@ -236,20 +246,93 @@ const confirm = () => {
     emits('update:visible', false)
 }
 
+// 日期禁用相关逻辑
+// 判断date日期是否在range日期范围内，在为true，不在为false
+const isDateInRange = (date: Date, range: DateRange) => {
+    const { start, end } = range
+    // 处理快捷设置，禁用今天之前的日期/今天之后的日期
+    // 如果start为null，表示没有下限；如果end为null，表示没有上限
+    if (start === null) return date <= new Date(end!)
+    if (end === null) return date >= new Date(start)
+    // 处理普通的传递了start和end的range范围
+    return date >= new Date(start) && date <= new Date(end)
+}
+// 是否在传递的属性中所指定的可选日期范围内
+const isDateInEnableRange = (date: Date): boolean => {
+    if (!props.enabledRange) {
+        // 属性中没有传递enabledRange可选日期范围
+        return true
+    } else {
+        // 属性中传递了enabledRange可选日期范围
+        return isDateInRange(date, props.enabledRange)
+    }
+}
+// 是否在传递的属性中所指定的禁用日期范围内
+// 禁用日期范围、便捷设置中禁用今天之前的日期、便捷设置中禁用今天之后的日期 三者共同组成的禁用日期范围
+const disabledDateRange = computed(() => {
+    const { disabledRanges = [], disablePast, disableFuture } = props
+    const ranges = []
+    ranges.push(...disabledRanges)
+    // 便捷设置，禁用今天之前的日期
+    if (disablePast) {
+        ranges.push({
+            start: null,
+            end: new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 23, 59, 59)
+        })
+    }
+    // 便捷设置，禁用今天之后的日期
+    if (disableFuture) {
+        ranges.push({
+            start: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1),
+            end: null
+        })
+    }
+    return ranges
+})
+const isDateInDisableRange = (date: Date) => {
+    return disabledDateRange.value.some((range) => isDateInRange(date, range))
+}
+// 是否在传递的属性中所指定的禁用的具体日期中
+// 将属性中传递的disabledDates转为Date类型
+const disabledDates = computed(() => {
+    if (!props.disabledDates) {
+        return []
+    } else {
+        return props.disabledDates.map(date => typeof date == 'string' ? new Date(date) : date)
+    }
+})
+const isDateInDisableDate = (date: Date) => {
+    return disabledDates.value.some(disabledDate => isSameDay(date, disabledDate))
+}
+// 是否在传递的属性中所指定的禁用的星期几内
+const isDateInDisabledWeekdays = (date: Date) => {
+    if (!props.disabledWeekdays) {
+        // 属性中没有传递disabledWeekdays禁用星期几
+        return false
+    } else {
+        // 属性中传递disabledWeekdays禁用星期几
+        return props.disabledWeekdays.includes(date.getDay())
+    }
+}
+// 所有禁用日期汇总
+const isDisabled = (date: Date) => {
+    return !isDateInEnableRange(date) || isDateInDisableRange(date) || isDateInDisableDate(date) || isDateInDisabledWeekdays(date)
+}
+
 // 若一开始通过v-model绑定了初始值则进行初始化
 const init = () => {
     if (props.modelValue) {
         if (props.type == 'single' && props.modelValue.split('-').length == 1) {
-            selectedDate.value=new Date(props.modelValue)
+            selectedDate.value = new Date(props.modelValue)
         } else if (props.type == 'range' && props.modelValue.split('-').length == 2) {
-            const [start,end]=props.modelValue.split('-')
-            if(start==end){
+            const [start, end] = props.modelValue.split('-')
+            if (start == end) {
                 // 选择的时间段是同一天
-                selectedStartDate.value=new Date(start)
-            }else{
+                selectedStartDate.value = new Date(start)
+            } else {
                 // 选择的时间段不是同一天
-                selectedStartDate.value=new Date(start)
-                selectedEndDate.value=new Date(end)
+                selectedStartDate.value = new Date(start)
+                selectedEndDate.value = new Date(end)
             }
         } else {
             throw Error('日期选择器类型与传递的日期默认值不匹配')

@@ -133,12 +133,6 @@
                 position: relative;
                 transition: all 0.2s ease;
 
-                // 不是当前月份则为空,不显示
-                &.empty {
-                    opacity: 0;
-                    pointer-events: none;
-                }
-
                 // 不能选择的日期
                 &.disabled {
                     opacity: 0.3;
