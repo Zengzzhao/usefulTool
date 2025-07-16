@@ -64,3 +64,65 @@
    - 新消息自动滚动到底部
    - 监听滚动事件，当用户主动滚动时暂停自动滚动
    - 用户接近底部时恢复自动滚动
+
+# index3
+
+在index1的基础上，使用`MdImageProcessor`对Markdown文本中图片语法进行流式解析
+
+`MdImageProcessor`是一个专门处理Markdown文本中图片语法的流式解析器。在流式内容输入（如打字机效果、分块传输等）场景下，它能够优化图片的显示体验。（将未完全接收的图片URL替换为友好提示，避免用户看到半成品的URL）
+
+## 功能特点
+
+- **流式处理**：专为处理逐步传入的Markdown内容而设计
+- **图片语法优化**：将未完全接收的图片URL替换为友好提示，避免用户看到半成品的URL
+- **状态管理**：通过有限状态机实现精确的解析逻辑
+
+## 工作原理
+
+在流式输入情况下，Markdown中的图片语法`![alt](url)`可能会被分段接收。常规解析会导致URL在接收过程中就直接显示，使用本解析器可以：
+
+1. 在URL未完全接收前，将`![alt](incomplete-url`显示为`![alt]图片解析中...`
+2. 当URL完全接收后，自动将占位文本替换回完整的图片语法，展示为正常图片
+
+## 状态定义
+
+解析器使用有限状态机实现，包括以下状态：
+
+- `Normal`：正常文本处理状态
+- `Alt_Started`：检测到`![`后开始收集alt文本
+- `Alt_Complete`：alt文本收集完成，等待URL开始
+- `Url_Parsing`：正在收集URL
+
+## 使用方法
+
+```typescript
+import MdImageProcessor from '@/common/MdImageProcessor';
+
+// 创建解析器实例
+const mdImageProcessor = new MdImageProcessor();
+// 处理Markdown文本
+const processedMarkdown = mdImageProcessor.process('一些文字![图片说明](https://example.com/image.jpg)');
+// 可用于后续Markdown解析
+const html = await marked.parse(processedMarkdown);
+```
+
+## 流式输入示例
+
+在逐步输入的场景中（如聊天应用、AI回答等）：
+
+```typescript
+const mdImageProcessor = new MdImageProcessor();
+
+// 第一块内容: "一些文字![图片"
+let content1 = mdImageProcessor.process("一些文字![图片");
+// 结果: "一些文字![图片"
+
+// 第二块内容: "一些文字![图片说明]("
+let content2 = mdImageProcessor.process("一些文字![图片说明](");
+// 结果: "一些文字![图片说明]图片解析中..."
+
+// 最终完整内容: "一些文字![图片说明](https://example.com/image.jpg)"
+let content3 = mdImageProcessor.process("一些文字![图片说明](https://example.com/image.jpg)");
+// 结果: "一些文字![图片说明](https://example.com/image.jpg)"
+```
+
