@@ -158,3 +158,8 @@ let content3 = mdImageProcessor.process("一些文字![图片说明](https://exa
 - 会话ID (`sessionID`)
 - 推荐问题列表 (`recommendQuestionList`)
 
+# index5
+
+将对话页面抽离成一个单独的组件，通过传递type为pgae代表使用组件的地方为页面，modal表示使用组件的地方为模态框组件modal
+
+以此实现对话可以在一个页面上展现，也可以作为一个悬浮头像，当点击头像弹出输入框，输入问题发送后展现对话的功能

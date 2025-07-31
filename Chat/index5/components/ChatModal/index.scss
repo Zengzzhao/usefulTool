@@ -1,0 +1,57 @@
+// AI悬浮头像
+.chat_entry {
+    position: fixed;
+    bottom: 100rpx;
+    right: 50rpx;
+    width: 120rpx;
+    height: 120rpx;
+    border-radius: 50%;
+    box-shadow: 0 22rpx 16rpx 0 rgba(0, 0, 0, 0.1);
+    // background:image position / size repeat
+    background: url('../../assets/agent_icon.png') center / 100% no-repeat;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+    }
+
+    to {
+        transform: translateX(0);
+    }
+}
+
+// 输入框的模态框
+.mask {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+
+    .input_container {
+        position: absolute;
+        right: 50rpx;
+        bottom: 100rpx;
+        width: 680rpx;
+        height: 100rpx;
+        border-radius: 32rpx;
+        box-shadow: 0 7px 4px 0 rgba(0, 0, 0, 0.1);
+        animation: slideIn 0.2s ease-out forwards;
+    }
+}
+
+// 对话界面的模态框
+.page_modal {
+    position: fixed;
+    z-index: 1;
+    bottom: 0rpx;
+    left: 0rpx;
+    width: 100vw;
+    height: fit-content;
+    min-height: 858rpx;
+    background-color: #fff;
+    border-top-left-radius: 48rpx;
+    border-top-right-radius: 48rpx;
+    padding-top: 40rpx;
+}
