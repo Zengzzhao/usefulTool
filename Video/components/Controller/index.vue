@@ -17,7 +17,7 @@
         <!-- 拖拽时中间显示时间 -->
         <view v-if="isDragging" class="drag_time">{{ dragTimeText }}</view>
         <!-- 底部控制栏 -->
-        <view v-if="showControls" class="control_bar">
+        <view v-if="showControls" class="control_bar" @tap.stop>
             <!-- 左侧播放/暂停按钮 -->
             <view class="play_btn" @tap.stop="tooglePlay">
                 <image v-if="!isPlaying" src="https://static.tongyiqingyuan.com/icons/video_play_icon.svg"
@@ -61,14 +61,15 @@
                     </view>
                 </view>
                 <!-- 全屏按钮 -->
-                <image class="fullscreen_btn" src="https://static.tongyiqingyuan.com/icons/full_screen.svg" />
+                <image class="fullscreen_btn" src="https://static.tongyiqingyuan.com/icons/full_screen.svg"
+                    @tap="handleFullscreen" />
             </view>
         </view>
     </view>
 </template>
 
 <script setup lang='ts'>
-import { ref, computed, onMounted, getCurrentInstance, watch } from 'vue';
+import { ref, computed, onMounted, getCurrentInstance, watch, onUnmounted } from 'vue';
 import { utils } from '@/common/utils';
 
 interface Props {
@@ -77,9 +78,11 @@ interface Props {
     currentTime: number // 当前播放的时间
     duration: number // 视频总时长
     allowSeek?: boolean // 是否允许拖拽
+    isFullscreen?: boolean // 是否全屏
 }
 const props = withDefaults(defineProps<Props>(), {
-    allowSeek: true
+    allowSeek: true,
+    isFullscreen: false
 })
 const emits = defineEmits<{
     (e: 'play'): void, // 播放事件
@@ -87,6 +90,7 @@ const emits = defineEmits<{
     (e: 'repaly'): void // 重播事件
     (e: 'seek', value: number): void // 拖拽事件
     (e: 'rateChange', value: number): void // 视频播放倍速切换
+    (e: 'fullscreenChange', isFullscreen: boolean): void // 全屏显示事件 
 }>()
 
 // 定义变量
@@ -97,6 +101,7 @@ const tempProgress = ref(0) // 临时进度百分比，用于拖拽时实时显�
 const maxPlayedTime = ref(0) // 已播放过的最大时间
 const currentRate = ref(1) // 当前视频播放速率
 const showRateOptions = ref(false) // 是否显示选择倍速选项弹窗
+const controlsTimer = ref<number | null>(null) // 自动隐藏控制器的定时器
 // 播放速率选项
 const playRate = [
     { label: '0.5x', value: 0.5 },
@@ -125,7 +130,39 @@ const dragTimeText = computed(() => {
     const curTime = (tempProgress.value / 100) * props.duration
     return `${utils.formatSecondTime(curTime)}/${utils.formatSecondTime(props.duration)}`
 })
+// 监听是否是全屏的变化,变化时重新获取进度条元素的位置信息
+watch(() => props.isFullscreen, () => {
+    setTimeout(() => {
+        getProgressBarRect()
+    }, 100)
+})
 
+// 如果正在播放时调用该方法：3s后自动隐藏控制器
+const hideControls = () => {
+    if (controlsTimer.value) {
+        clearTimeout(controlsTimer.value)
+        controlsTimer.value = null
+    }
+    controlsTimer.value = setTimeout(() => {
+        showControls.value = false
+    }, 3000)
+}
+// 监听播放状态，当视频正在播放、且控制器可见时隐藏控制器，否则当视频暂停/重播时显示控制器
+watch(() => [props.isPlaying, showControls.value], ([newIsPlaying, newShowControls]) => {
+    if (newIsPlaying) {
+        // 正在播放时若此时控制器看得见，设置3s后自动隐藏控制器
+        if (newShowControls) {
+            hideControls()
+        }
+    } else {
+        // 暂停或者重播时，清除计时器，显示控制器
+        if (controlsTimer.value) {
+            clearTimeout(controlsTimer.value)
+            controlsTimer.value = null
+        }
+        showControls.value = true
+    }
+})
 
 // 事件处理
 // 点击播放/暂停按钮的事件处理：进行播放/暂停控制
@@ -191,7 +228,10 @@ const handleRateChange = (rate: number) => {
     showRateOptions.value = false
     emits('rateChange', rate)
 }
-
+// 点击了全屏按钮的事件处理
+const handleFullscreen = () => {
+    emits('fullscreenChange', !props.isFullscreen)
+}
 
 // 工具处理方法
 // 获取进度条位置信息
@@ -208,6 +248,12 @@ const getProgressBarRect = () => {
 onMounted(() => {
     // 获取进度条位置信息
     getProgressBarRect()
+})
+onUnmounted(() => {
+    if (controlsTimer.value) {
+        clearTimeout(controlsTimer.value)
+        controlsTimer.value = null
+    }
 })
 </script>
 
