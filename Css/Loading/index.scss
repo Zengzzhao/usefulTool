@@ -1,0 +1,24 @@
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .loading-spinner {
+        width: 20px;
+        height: 20px;
+        // 若是要设置自定义图标旋转效果，则通过设置background: url('@/assets/icon/loading.svg');实现
+        border: 2px solid rgba(0, 212, 255, 0.2); // 外圈颜色
+        border-top: 2px solid #00D4FF; // 顶部颜色
+        border-radius: 50%;
+        animation: spin 1s linear infinite; // 应用旋转动画
+    }
+}
+// Loading旋转动画的keyframes定义
+@keyframes spin {
+    0% {
+        transform: rotate(0deg); // 起始角度
+    }
+    100% {
+        transform: rotate(360deg); // 结束角度，完成一圈旋转
+    }
+}
