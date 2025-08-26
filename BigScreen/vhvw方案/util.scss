@@ -1,0 +1,16 @@
+@use 'sass:math';
+
+// UI整个大屏宽度
+$designWidth: 1920;
+// UI整个大屏高度
+$designHeight: 1080;
+
+// px转为vw的函数
+@function vw($px) {
+  @return math.div($px, $designWidth)*100vw;
+}
+
+// px转为vh的函数
+@function vh($px) {
+  @return math.div($px, $designHeight)*100vh;
+}
