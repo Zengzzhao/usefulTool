@@ -171,7 +171,7 @@ const isInRange = (date: Date) => {
     return false
 }
 
-// 返回指导格式的日期字符串
+// 返回指定格式的日期字符串
 const formatDate = (date: Date, format: string = 'YYYY.MM.DD') => {
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
